@@ -12,6 +12,8 @@ mod tests {
     use crate::Array;
     use crate::Table;
 
+    use std::panic::catch_unwind;
+
     #[test]
     fn test_array_basics() {
         let array = Array::new(100);
@@ -33,10 +35,10 @@ mod tests {
         assert_eq!(array.get(0), 74);
         assert_eq!(array.get(1), 74);
         
-        std::panic::catch_unwind(|| {
+        catch_unwind(|| {
             array.set(100, 100);
         }).unwrap_err();
-        std::panic::catch_unwind(|| {
+        catch_unwind(|| {
             array.get(100);
         }).unwrap_err();
     }
@@ -106,17 +108,51 @@ mod tests {
     #[test]
     fn test_table_basics(){
 
-        // First test if no overlap occurs
-        {
-            let table = Table::new(Array::new(4), 2);
+        // First some basic tests with 2 by 2 table
+        unsafe {
+            let array = Array::new(5);
+            array.set(4, 12);
+            let table = Table::new(array.sharing_copy(), 2, 2);
             table.set(0, 0, 0);
-            table.set(0, 1, 1);
-            table.set(1, 0, 2);
+            table.set(1, 0, 1);
+            table.set(0, 1, 2);
             table.set(1, 1, 3);
             assert_eq!(table.get(0, 0), 0);
-            assert_eq!(table.get(0, 1), 1);
-            assert_eq!(table.get(1, 0), 2);
+            assert_eq!(table.get(1, 0), 1);
+            assert_eq!(table.get(0, 1), 2);
             assert_eq!(table.get(1, 1), 3);
+            assert_eq!(array[0], 0);
+            assert_eq!(array[1], 1);
+            assert_eq!(array[2], 2);
+            assert_eq!(array[3], 3);
+            table.set_all(13);
+            assert_eq!(table.get(0, 0), 13);
+            assert_eq!(array[4], 12);
+            
+            catch_unwind(|| {
+                table.set(0, 2, 0);
+            }).unwrap_err();
+            catch_unwind(|| {
+                table.set(2, 0, 1);
+            }).unwrap_err();
+        }
+
+        // Use a bigger table to test for row and column operations
+        {
+            let table = Table::new(Array::new(9), 3, 3);
+            table.set_all(1);
+            table.set_row(0, 2);
+            assert_eq!(table.get(0, 0), 2);
+            assert_eq!(table.get(1, 0), 2);
+            assert_eq!(table.get(2, 0), 2);
+            assert_eq!(table.get(0, 1), 1);
+
+            table.set_column(1, 5);
+            assert_eq!(table.get(1, 0), 5);
+            assert_eq!(table.get(1, 1), 5);
+            assert_eq!(table.get(1, 2), 5);
+            assert_eq!(table.get(0, 2), 1);
+            assert_eq!(table.get(2, 0), 2);
         }
     }
 }

@@ -64,6 +64,12 @@ impl<T> Array<T> {
     /// If the given index is not within the bounds of this array, this will panic.
     pub fn get_ref(&self, index: usize) -> &T {
         self.check_bound(index);
+        self.get_unchecked_ref(index)
+    }
+
+    /// Gets a reference to the element at the given index in this array.
+    /// If the given index is not within the bounds of this array, undefined behavior will occur.
+    pub fn get_unchecked_ref(&self, index: usize) -> &T {
         unsafe {
             &*self.pointer.add(index)
         }
@@ -73,6 +79,12 @@ impl<T> Array<T> {
     /// If the given index is not within the bounds of this array, this will panic.
     pub fn get_mut_ref(&self, index: usize) -> &mut T {
         self.check_bound(index);
+        self.get_unchecked_mut_ref(index)
+    }
+
+    /// Gets a mutable reference to the element at the given index in this array.
+    /// If the given index is not within the bounds of this array, undefined behavior will occur.
+    pub fn get_unchecked_mut_ref(&self, index: usize) -> &mut T {
         unsafe {
             self.pointer.add(index).as_mut().unwrap()
         }
@@ -82,6 +94,12 @@ impl<T> Array<T> {
     /// If the given index is not within the bounds of this array, this will panic.
     pub fn set(&self, index: usize, value: T){
         self.check_bound(index);
+        self.set_unchecked(index, value);
+    }
+
+    /// Sets the element at the specified index in this array to the given value.
+    /// If the given index is not within the bounds of this array, undefined behavior will occur.
+    pub fn set_unchecked(&self, index: usize, value: T){
         unsafe {
             *self.pointer.add(index) = value;
         }
@@ -119,6 +137,25 @@ impl<T> Array<T> {
     }
 }
 
+use std::ops::{Index,IndexMut};
+
+impl<T> Index<usize> for Array<T> {
+
+    type Output = T;
+
+    fn index(&self, index: usize) -> &T {
+        self.get_ref(index)
+    }
+}
+
+// Unfortunately, this requires a mutable reference to the Array, but so be it...
+impl<T> IndexMut<usize> for Array<T> {
+
+    fn index_mut(&mut self, index: usize) -> &mut T {
+        self.get_mut_ref(index)
+    }
+}
+
 impl<T: Copy> Array<T> {
 
     /// Sets some elements of this Array to (copies of) the specified value.
@@ -146,8 +183,15 @@ impl<T: Copy> Array<T> {
     }
 
     /// Gets and returns a copy of the element at the specified index in this Array.
+    /// If the index is outside the array bounds, this will panic.
     pub fn get(&self, index: usize) -> T {
         self.check_bound(index);
+        self.get_unchecked(index)
+    }
+
+    /// Gets and returns a copy of the element at the specified index in this Array.
+    /// If the index is outside the bounds of this Array, undefined behavior occurs.
+    pub fn get_unchecked(&self, index: usize) -> T {
         unsafe {
             *self.pointer.add(index)
         }
