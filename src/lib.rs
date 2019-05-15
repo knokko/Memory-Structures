@@ -1,24 +1,25 @@
-extern crate num;
-
 mod array;
 mod table;
+mod graphics;
+pub mod utility;
 
 pub use array::Array;
 pub use table::Table;
+pub use graphics::Graphics2D;
 
 #[cfg(test)]
 mod tests {
 
     use crate::Array;
     use crate::Table;
+    use crate::Graphics2D;
 
     use std::panic::catch_unwind;
 
     #[test]
     fn test_array_basics() {
-        let array = Array::new(100);
+        let array = Array::create_filled(100, 74);
 
-        array.set_all(74);
         assert_eq!(array.get(0), 74);
         assert_eq!(array.get(99), 74);
 
@@ -45,8 +46,7 @@ mod tests {
 
     #[test]
     fn test_array_add(){
-        let array: Array<u8> = Array::new(100);
-        array.set_all(2);
+        let array: Array<u8> = Array::create_filled(100, 2);
         array.add(5, 3);
         assert_eq!(array.get(5), 5);
 
@@ -78,8 +78,7 @@ mod tests {
 
         // The task of this test is to make sure that it won't panic
         // The result of the sum is not so relevant as concurrency can affect it
-        let array = Array::new(1000);
-        array.set_all(0);
+        let array = Array::create_filled(1000, 0);
         let amount = 100;
         let mut handles = Vec::with_capacity(amount);
         for _ in 0..amount {
@@ -110,7 +109,7 @@ mod tests {
 
         // First some basic tests with 2 by 2 table
         unsafe {
-            let array = Array::new(5);
+            let array = Array::create_garbage(5);
             array.set(4, 12);
             let table = Table::new(array.sharing_copy(), 2, 2);
             table.set(0, 0, 0);
@@ -139,8 +138,7 @@ mod tests {
 
         // Use a bigger table to test for row and column operations
         {
-            let table = Table::new(Array::new(9), 3, 3);
-            table.set_all(1);
+            let table = Table::new(Array::create_filled(9, 1), 3, 3);
             table.set_row(0, 2);
             assert_eq!(table.get(0, 0), 2);
             assert_eq!(table.get(1, 0), 2);
@@ -154,5 +152,31 @@ mod tests {
             assert_eq!(table.get(0, 2), 1);
             assert_eq!(table.get(2, 0), 2);
         }
+    }
+
+    #[test]
+    fn test_table_graphics(){
+
+        // This is just to test that it won't panic
+        let width = 10;
+        let height = 10;
+        let array = Array::create_filled(width * height, 0);
+        let table = Table::new(array, width, height);
+
+        // A single vertical line and horizontal line
+        table.draw_line(0, 0, 0, 9, 1);
+        table.draw_line(0, 0, 9, 0, 1);
+        table.draw_line(0, 0, 20, 30, 30);
+
+        // Some other lines
+        table.draw_line(2, 2, 7, 7, 5);
+        table.draw_line(2, 7, 7, 2, 5);
+        table.draw_line(7, 7, 2, 2, 5);
+        table.draw_line(7, 2, 2, 7, 5);
+
+        table.draw_line(0, 0, 2, 9, 4);
+
+        // Remove this line later since nobody will bother reading it anyway
+        table.print();
     }
 }

@@ -35,7 +35,8 @@ impl<T> Array<T> {
 
     /// Creates a new Array with the given size. If the size is 0, this method will panic.
     /// The created Array will own its data.
-    pub fn new(size: usize) -> Array<T> {
+    /// The initial data will be 'garbage', which means that the initial data are completely arbitrary.
+    pub fn create_garbage(size: usize) -> Array<T> {
         if size == 0 {
             panic!("Attempted to create an array of length 0");
         }
@@ -158,6 +159,27 @@ impl<T> IndexMut<usize> for Array<T> {
 
 impl<T: Copy> Array<T> {
 
+    pub fn create_filled(size: usize, value: T) -> Array<T> {
+        let array = Array::create_garbage(size);
+        array.set_all(value);
+        array
+    }
+
+    pub fn create_vector(&self, start_index: usize, length: usize) -> Vec<T> {
+        if start_index + length > self.size {
+            panic!("start_index is {} and length is {}, but the size of this array is {}", start_index, length, self.size);
+        }
+
+        let mut vector = Vec::with_capacity(length);
+        // TODO maybe improve performance of this
+        let mut index = start_index;
+        for _ in 0..length {
+            vector.push(self.get_unchecked(index));
+            index += 1;
+        }
+        vector
+    }
+
     /// Sets some elements of this Array to (copies of) the specified value.
     /// The elements at indices start_index (inclusive) to start_index + amount (exclusive)
     /// will be set to the specified value.
@@ -203,16 +225,42 @@ use std::ops::AddAssign;
 impl<T: AddAssign + Copy> Array<T> {
 
     /// Increases that element at the given index in this array by the specified amount.
-    pub fn add(&self, index: usize, amount: T){
+    /// If the index is not within the bounds, undefined behavior occurs
+    pub fn add_unchecked(&self, index: usize, amount: T){
         self.check_bound(index);
         unsafe {
             *self.pointer.add(index) += amount;
         }
     }
 
+    /// Increases that element at the given index in this array by the specified amount.
+    /// If the index is not within the bounds, this method will panic
+    pub fn add(&self, index: usize, amount: T){
+        self.check_bound(index);
+        self.add_unchecked(index, amount);
+    }
+
     /// Increases some elements of this Array by the specified amount.
     /// The elements at indices start_index (inclusive) to start_index + amount (exclusive)
     /// will be increased by the specified amount.
+    /// This method will panic if adding start_index and amount_of_elements causes overflow
+    /// Undefined behavior occurs if start_index + amount_of_elements > len()
+    pub fn add_unchecked_some(&self, start_index: usize, amount_of_elements: usize, amount_to_add: T){
+        if amount_of_elements != 0 {
+            let end_index = start_index.checked_add(amount_of_elements - 1).unwrap();
+            unsafe {
+                for index in start_index..=end_index {
+                    *self.pointer.add(index) += amount_to_add;
+                }
+            }
+        }
+    }
+
+    /// Increases some elements of this Array by the specified amount.
+    /// The elements at indices start_index (inclusive) to start_index + amount (exclusive)
+    /// will be increased by the specified amount.
+    /// This method will panic if adding start_index and amount_of_elements causes overflow
+    /// This method will panic if start_index + amount_of_elements > len()
     pub fn add_some(&self, start_index: usize, amount_of_elements: usize, amount_to_add: T){
         if amount_of_elements != 0 {
             let end_index = start_index.checked_add(amount_of_elements - 1).unwrap();
@@ -235,7 +283,7 @@ impl<T: AddAssign + Copy> Array<T> {
     }
 }
 
-use num::Saturating;
+use crate::utility::Saturating;
 
 impl<T: Saturating + Copy> Array<T> {
 

@@ -1,4 +1,7 @@
 use crate::Array;
+use crate::Graphics2D;
+
+use std::ops::{Add,AddAssign};
 
 pub struct Table<T> {
 
@@ -76,6 +79,21 @@ impl<T> Table<T> {
     }
 }
 
+use std::fmt::Debug;
+
+impl<T: Debug + Copy> Table<T> {
+
+    pub fn print(&self){
+        for y in 0..self.height {
+            let mut vector = Vec::with_capacity(self.width);
+            for x in 0..self.width {
+                vector.push(self.get_unchecked(x, y));
+            }
+            println!("{:?}", vector);
+        }
+    }
+}
+
 impl<T: Copy> Table<T> {
 
     pub fn get(&self, x: usize, y: usize) -> T {
@@ -116,5 +134,26 @@ impl<T: Copy> Table<T> {
 
     pub fn set_all(&self, value: T){
         self.array.set_some(0, self.bound, value);
+    }
+}
+
+impl<T: Add + AddAssign + Copy> Graphics2D<T> for Table<T> {
+
+    fn add_unchecked(&self, x: usize, y: usize, amount: T){
+        self.array.add_unchecked(self.unchecked_index_for(x, y), amount);
+    }
+
+    fn add_unchecked_rect(&self, min_x: usize, min_y: usize, max_x: usize, max_y: usize, amount: T){
+        for y in min_y..=max_y {
+            self.array.add_unchecked_some(self.unchecked_index_for(min_x, y), max_x - min_x + 1, amount);
+        }
+    }
+
+    fn get_width(&self) -> usize {
+        self.width
+    }
+
+    fn get_height(&self) -> usize {
+        self.height
     }
 }
